@@ -1,0 +1,37 @@
+{
+  "profile": "qonto",
+  "transactions": [
+    {
+      "row": 2,
+      "date": "2026-10-01",
+      "label": "Invoice DEMO-001",
+      "amountCents": 120000,
+      "currency": "EUR",
+      "duplicateOf": null
+    },
+    {
+      "row": 3,
+      "date": "2026-10-02",
+      "label": "Hosting, demo",
+      "amountCents": -2490,
+      "currency": "EUR",
+      "duplicateOf": null
+    },
+    {
+      "row": 4,
+      "date": "2026-10-02",
+      "label": "Hosting, demo",
+      "amountCents": -2490,
+      "currency": "EUR",
+      "duplicateOf": 3
+    }
+  ],
+  "summary": {
+    "count": 3,
+    "possibleDuplicates": 1,
+    "totalsCentsByCurrency": {
+      "EUR": 115020
+    }
+  },
+  "limitations": "Synthetic example profiles only. Real bank exports not verified. Possible duplicates are preserved; review them before reconciliation."
+}
