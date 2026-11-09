@@ -1,0 +1,118 @@
+{
+  "name": "Loupe & Lettres — Normalize statement CSV (synthetic profiles)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Loupe & Lettres — créé avec l'aide de l'IA\n\n### How it works\nThis manual workflow helps freelancers turn a pasted bank statement CSV into consistent transaction JSON. It validates the selected demonstration profile, calendar dates, signed amounts and currency. Amounts use integer minor units. Totals remain separated by currency. Identical date, label, amount and currency combinations are flagged as possible duplicates and preserved, because two genuine transactions can look identical. No email is sent, no bank is contacted and no external account is required.\n\n### Setup\nImport this JSON into a fresh workflow. Open “Example statement” and keep the synthetic Qonto-inspired sample for your first run. Execute the workflow manually and inspect “Normalize statement”. Compare the output with the supplied example. To process another example, choose qonto, boursorama, revolut_business or credit_agricole and paste its CSV text into csv. These are synthetic demonstration layouts; real bank exports have not been verified. Dates, separators and required columns must match the supplied fixtures. Only EUR, USD, GBP and CHF are accepted.\n\n### Customization\nAdapt the field mappings in the Code node only after testing your own export. Review every possible duplicate before reconciliation. This tool prepares data; it does not provide accounting or tax advice.",
+        "height": 610,
+        "width": 740,
+        "color": 3
+      },
+      "id": "overview",
+      "name": "Overview and setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -520
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "manual",
+      "name": "Run manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: {\"profile\": \"qonto\", \"csv\": \"Date,Label,Amount,Currency\\n2026-10-01,Invoice DEMO-001,1200.00,EUR\\n2026-10-02,\\\"Hosting, demo\\\",-24.90,EUR\\n2026-10-02,\\\"Hosting, demo\\\",-24.90,EUR\\n\"} }];"
+      },
+      "id": "example",
+      "name": "Example statement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "'use strict';\n\n// Loupe & Lettres — créé avec l'aide de l'IA\n// Synthetic demonstration profiles; actual bank exports have not been verified.\nconst PROFILES = Object.freeze({\n  qonto: { delimiter: ',', date: 'Date', label: 'Label', amount: 'Amount', currency: 'Currency', locale: 'en', dateStyle: 'iso' },\n  boursorama: { delimiter: ';', date: 'Date opération', label: 'Libellé', amount: 'Montant', currency: 'Devise', locale: 'fr', dateStyle: 'fr' },\n  revolut_business: { delimiter: ',', date: 'Date', label: 'Description', amount: 'Amount', currency: 'Currency', locale: 'en', dateStyle: 'iso' },\n  credit_agricole: { delimiter: ';', date: 'Date', label: 'Libellé', debit: 'Débit', credit: 'Crédit', currency: 'Devise', locale: 'fr', dateStyle: 'fr' },\n});\nconst CURRENCIES = new Set(['EUR', 'USD', 'GBP', 'CHF']);\n\nfunction parseCsv(source, delimiter) {\n  if (typeof source !== 'string' || source.length > 1000000) throw new Error('CSV must be text of at most 1000000 characters');\n  const text = source.replace(/^\\uFEFF/, '');\n  const rows = [];\n  let row = [], field = '', quoted = false, closed = false;\n  const pushField = () => { row.push(field); field = ''; closed = false; };\n  const pushRow = () => {\n    pushField();\n    if (row.some(value => value.trim() !== '')) rows.push(row);\n    row = [];\n    if (rows.length > 10001) throw new Error('CSV exceeds 10000 data rows');\n  };\n  for (let i = 0; i < text.length; i += 1) {\n    const char = text[i];\n    if (quoted) {\n      if (char === '\"' && text[i + 1] === '\"') { field += '\"'; i += 1; }\n      else if (char === '\"') { quoted = false; closed = true; }\n      else field += char;\n    } else if (char === delimiter) pushField();\n    else if (char === '\\n' || char === '\\r') {\n      if (char === '\\r' && text[i + 1] === '\\n') i += 1;\n      pushRow();\n    } else if (char === '\"') {\n      if (field !== '' || closed) throw new Error('Unexpected quote in CSV');\n      quoted = true;\n    } else {\n      if (closed) throw new Error('Unexpected text after closing CSV quote');\n      field += char;\n    }\n  }\n  if (quoted) throw new Error('Unclosed CSV quote');\n  if (field !== '' || row.length || closed) pushRow();\n  if (!rows.length) throw new Error('CSV is empty');\n  return rows;\n}\n\nfunction parseDate(value, style) {\n  const text = value.trim();\n  const match = (style === 'fr' ? /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/ : /^(\\d{4})-(\\d{2})-(\\d{2})$/).exec(text);\n  if (!match) throw new Error('Date must match the profile date format');\n  const [year, month, day] = style === 'fr' ? [Number(match[3]), Number(match[2]), Number(match[1])] : match.slice(1).map(Number);\n  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);\n  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];\n  if (year < 1900 || year > 2199 || month < 1 || month > 12 || day < 1 || day > days[month - 1]) throw new Error('Invalid calendar date');\n  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n}\n\nfunction parseAmount(value, locale) {\n  const text = value.trim().replace(/[\\u00A0\\u202F]/g, ' ');\n  const pattern = locale === 'fr'\n    ? /^[+-]?(?:\\d+|\\d{1,3}(?: \\d{3})+)(?:,\\d{1,2})?$/\n    : /^[+-]?(?:\\d+|\\d{1,3}(?:,\\d{3})+)(?:\\.\\d{1,2})?$/;\n  if (!pattern.test(text)) throw new Error('Invalid amount or unsupported precision');\n  const clean = locale === 'fr' ? text.replace(/ /g, '').replace(',', '.') : text.replace(/,/g, '');\n  const negative = clean.startsWith('-');\n  const [whole, fraction = ''] = clean.replace(/^[+-]/, '').split('.');\n  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));\n  if (!Number.isSafeInteger(cents)) throw new Error('Amount exceeds safe integer range');\n  return cents === 0 ? 0 : negative ? -cents : cents;\n}\n\nfunction normalizeStatement(input) {\n  if (!input || typeof input !== 'object' || typeof input.profile !== 'string' || !Object.hasOwn(PROFILES, input.profile)) throw new Error('Unknown profile');\n  const config = PROFILES[input.profile];\n  const rows = parseCsv(input.csv, config.delimiter);\n  const headers = rows[0].map(value => value.trim());\n  if (headers.some(value => value === '') || new Set(headers).size !== headers.length) throw new Error('Empty or duplicate CSV header');\n  const required = [config.date, config.label, config.currency, ...(config.amount ? [config.amount] : [config.debit, config.credit])];\n  for (const name of required) if (!headers.includes(name)) throw new Error(`Missing column: ${name}`);\n  const seen = new Map();\n  const totals = {};\n  const transactions = rows.slice(1).map((values, index) => {\n    const rowNumber = index + 2;\n    try {\n      if (values.length !== headers.length) throw new Error('Column count does not match header');\n      const get = name => values[headers.indexOf(name)].trim();\n      const date = parseDate(get(config.date), config.dateStyle);\n      const label = get(config.label);\n      if (!label) throw new Error('Transaction label is empty');\n      const currency = get(config.currency).toUpperCase();\n      if (!CURRENCIES.has(currency)) throw new Error('Currency must be EUR, USD, GBP or CHF');\n      let amountCents;\n      if (config.amount) amountCents = parseAmount(get(config.amount), config.locale);\n      else {\n        const debitText = get(config.debit), creditText = get(config.credit);\n        if (!debitText && !creditText) throw new Error('Both debit and credit are empty');\n        const debit = debitText ? parseAmount(debitText, config.locale) : 0;\n        const credit = creditText ? parseAmount(creditText, config.locale) : 0;\n        if (debit < 0 || credit < 0 || (debit !== 0 && credit !== 0)) throw new Error('Debit/credit requires nonnegative values and at most one nonzero side');\n        amountCents = credit - debit;\n      }\n      const key = JSON.stringify([date, label, amountCents, currency]);\n      const duplicateOf = seen.get(key) ?? null;\n      if (duplicateOf === null) seen.set(key, rowNumber);\n      const total = (totals[currency] || 0) + amountCents;\n      if (!Number.isSafeInteger(total)) throw new Error('Currency total exceeds safe integer range');\n      totals[currency] = total;\n      return { row: rowNumber, date, label, amountCents, currency, duplicateOf };\n    } catch (error) { throw new Error(`Data row ${rowNumber}: ${error.message}`); }\n  });\n  return {\n    profile: input.profile,\n    transactions,\n    summary: {\n      count: transactions.length,\n      possibleDuplicates: transactions.filter(item => item.duplicateOf !== null).length,\n      totalsCentsByCurrency: totals,\n    },\n    limitations: 'Synthetic example profiles only. Real bank exports not verified. Possible duplicates are preserved; review them before reconciliation.',\n  };\n}\n\nreturn $input.all().map(item => ({ json: normalizeStatement(item.json) }));\n"
+      },
+      "id": "normalize",
+      "name": "Normalize statement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Manual input\nUse the included synthetic statement first. Replace profile and csv in Example statement.",
+        "height": 230,
+        "width": 440,
+        "color": 1
+      },
+      "id": "input-note",
+      "name": "Input section",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Validate and inspect\nInvalid rows stop the run. Possible duplicates remain in the output for review.",
+        "height": 230,
+        "width": 360,
+        "color": 1
+      },
+      "id": "output-note",
+      "name": "Output section",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        470,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Run manually": {
+      "main": [
+        [
+          {
+            "node": "Example statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Example statement": {
+      "main": [
+        [
+          {
+            "node": "Normalize statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
