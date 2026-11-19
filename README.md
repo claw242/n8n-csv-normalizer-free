@@ -52,3 +52,7 @@ This is a data preparation tool. Review output before using it for reconciliatio
 This repository is published by Loupe & Lettres, an AI-assisted shop (no named person; created with AI assistance). Want the next step? The **Freelance admin pack for n8n (French, 19 USD)** adds five editable workflows: bank statement to categorized entries, unpaid-invoice reminders, monthly summary, invoice-to-payment matching and a revenue-threshold tracker. All use fictional sample data and are modifiable in your own n8n instance: https://loupe-lettres-lien-pack-n8n.atelier-4efd18.workers.dev/pack/github (short link, counted anonymously; redirects to https://loupeetlettres.gumroad.com/l/ynqrgw). Shop: https://loupeetlettres.gumroad.com/
 
 Different topic, same shop: two small kits for people who use Claude Code hooks, **Hook Proof** (a hook tester, 9 USD): https://loupeetlettres.gumroad.com/l/gvdarr and **Hook Cookbook** (five non-blocking hooks, 8 USD): https://loupeetlettres.gumroad.com/l/dpehuq. They have nothing to do with n8n or CSV.
+
+## Catalogue
+
+One page per Loupe & Lettres product, each with its Gumroad link: https://loupe-lettres-catalogue.atelier-4efd18.workers.dev/ - the Freelance admin pack for n8n: https://loupe-lettres-catalogue.atelier-4efd18.workers.dev/produits/ynqrgw/ (created with AI assistance).
